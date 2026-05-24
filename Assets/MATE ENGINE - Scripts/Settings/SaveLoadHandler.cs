@@ -178,6 +178,7 @@ public class SaveLoadHandler : MonoBehaviour
         public bool enableRandomAvatar = false;
 
         public bool enableLocomotion = false;
+        public bool enableAgentBridge = false;
 
 
         //ALARM
