@@ -161,3 +161,81 @@ C# 端读取两个文件，取 `v` 值最大的那个。这样避免了写入冲
 | `Assets/MATE ENGINE - Scripts/Settings/SaveLoadHandler.cs` | 修改 | SettingsData 加 1 行 `enableAgentBridge` |
 | `adapters/openclaw_adapter.ts` | 新建 | OpenClaw 适配器 |
 | `adapters/hermes_adapter.py` | 新建 | Hermes 适配器 |
+
+---
+
+## 实施状态
+
+### 已完成（代码层面）
+
+| 任务 | 文件 | 状态 |
+|------|------|------|
+| 核心桥接脚本 | `AvatarAgentBridge.cs` | ✅ 已提交 |
+| 设置开关 | `SaveLoadHandler.cs` | ✅ 已提交 |
+| OpenClaw 适配器 | `adapters/openclaw_adapter.ts` | ✅ 已提交 |
+| Hermes 适配器 | `adapters/hermes_adapter.py` | ✅ 已提交 |
+| 项目文档 | `CLAUDE.md` | ✅ 已提交 |
+| 设计文档 | `docs/design-agent-bridge.md` | ✅ 已提交 |
+
+相关 commit：
+- `92077151` — Add CLAUDE.md and agent bridge design doc
+- `5788ab99` — Add Agent Bridge: AI agent status → desktop pet integration
+
+### 待完成（需要在 Unity Editor 中操作）
+
+#### 1. 场景配置（必须）
+
+在 Unity 6000.2.6f2 中打开项目后：
+
+1. 打开场景 `Assets/MATE ENGINE - Scenes/Mate Engine Main.unity`
+2. 在 Hierarchy 中找到 avatar 对象
+3. Add Component → `AvatarAgentBridge`
+4. 在 Inspector 中设置引用：
+   - `chatContainer` — 从同对象的 `AvatarRandomMessages` 组件的 `chatContainer` 复制
+   - `bubbleSprite` — 从 `AvatarRandomMessages` 复制
+   - `font` — 从 `AvatarRandomMessages` 复制
+   - `bubbleMaterial` — 从 `AvatarRandomMessages` 复制（可选）
+5. 勾选 `enableAgentBridge`
+
+#### 2. Settings UI 开关（可选）
+
+如果需要在设置菜单中暴露 `enableAgentBridge` 开关：
+
+1. 找到 Settings Menu 的 UI 预制体
+2. 复制现有的 toggle 组件（如 `enableRandomMessages` 的 toggle）
+3. 绑定到 `SaveLoadHandler.Instance.data.enableAgentBridge`
+4. 在 `ApplyAllSettingsToAllAvatars()` 中添加同步逻辑（如需要）
+
+#### 3. 适配器测试
+
+**OpenClaw 适配器测试**：
+```bash
+cd adapters
+npm install ws
+npx ts-node openclaw_adapter.ts ws://localhost:8080
+```
+验证：检查 `agent_status.json` 文件是否被正确创建和更新。
+
+**Hermes 适配器测试**：
+```bash
+cd adapters
+pip install requests
+python hermes_adapter.py --api http://localhost:8000
+```
+验证：检查 `agent_status.json` 文件是否被正确创建和更新。
+
+#### 4. 端到端测试
+
+1. 启动 Mate Engine（Unity Play Mode 或构建的 exe）
+2. 启动一个适配器脚本
+3. 手动写入测试 JSON 到总线文件：
+```json
+{"v":1,"agent":"test","state":"working","message":"Testing...","progress":0,"error":null,"task_name":"","writeUtc":1716552000.0}
+```
+4. 观察宠物反应：表情变化、气泡显示、动画状态切换
+
+### 已知限制
+
+1. **多 agent 冲突**：当前实现只读取单个 `agent_status.json` 文件。如果需要同时运行 OpenClaw 和 Hermes，需要修改 `AvatarAgentBridge.cs` 读取两个文件（`agent_status_openclaw.json` 和 `agent_status_hermes.json`）并取最新的。
+2. **气泡冲突**：Agent 气泡与 `AvatarRandomMessages` 共用 `chatContainer`，会互相替换。这是设计上的权衡。
+3. **适配器未验证**：两个适配器脚本是基于文档编写的，未实际连接 OpenClaw/Hermes 测试。事件映射可能需要根据实际 API 调整。
